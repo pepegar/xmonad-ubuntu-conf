@@ -14,24 +14,24 @@
   Repository: https://github.com/davidbrewer/xmonad-ubuntu-conf
 -}
 
-import XMonad
-import XMonad.Hooks.SetWMName
-import XMonad.Layout.Grid
-import XMonad.Layout.ResizableTile
-import XMonad.Layout.ThreeColumns
-import XMonad.Layout.NoBorders
-import XMonad.Layout.Circle
-import XMonad.Layout.PerWorkspace (onWorkspace)
-import XMonad.Layout.Fullscreen
-import XMonad.Util.EZConfig
-import XMonad.Util.Run
-import XMonad.Hooks.DynamicLog
-import XMonad.Actions.Plane
-import XMonad.Hooks.ManageDocks
-import XMonad.Hooks.UrgencyHook
-import qualified XMonad.StackSet as W
-import qualified Data.Map as M
-import Data.Ratio ((%))
+import qualified Data.Map                    as M
+import           Data.Ratio                  ((%))
+import           XMonad
+import           XMonad.Actions.Plane
+import           XMonad.Hooks.DynamicLog
+import           XMonad.Hooks.ManageDocks
+import           XMonad.Hooks.SetWMName
+import           XMonad.Hooks.UrgencyHook
+import           XMonad.Layout.Circle
+import           XMonad.Layout.Fullscreen
+import           XMonad.Layout.Grid
+import           XMonad.Layout.NoBorders
+import           XMonad.Layout.PerWorkspace  (onWorkspace)
+import           XMonad.Layout.ResizableTile
+import           XMonad.Layout.ThreeColumns
+import qualified XMonad.StackSet             as W
+import           XMonad.Util.EZConfig
+import           XMonad.Util.Run
 
 {-
   Xmonad configuration variables. These settings control some of the
@@ -41,8 +41,8 @@ import Data.Ratio ((%))
 myModMask            = mod4Mask       -- changes the mod key to "super"
 myFocusedBorderColor = "#ff0000"      -- color of focused border
 myNormalBorderColor  = "#cccccc"      -- color of inactive border
-myBorderWidth        = 1              -- width of border around windows
-myTerminal           = "gnome-terminal"   -- which terminal software to use
+myBorderWidth        = 3              -- width of border around windows
+myTerminal           = "urxvt"   -- which terminal software to use
 
 {-
   Xmobar configuration variables. These settings control the appearance
@@ -83,13 +83,10 @@ myUrgentWSRight = "}"
 
 myWorkspaces =
   [
-    "7:Chat",  "8:Dbg", "9:Pix",
-    "4:Docs",  "5:Dev", "6:Web",
-    "1:Term",  "2:Hub", "3:Mail",
-    "0:VM",    "Extr1", "Extr2"
+    "1:Dev", "2:Web", "3:Chat", "4:Music", "5:Docs", "6", "7", "8", "9"
   ]
 
-startupWorkspace = "5:Dev"  -- which workspace do you want to be on after launch?
+startupWorkspace = "1:Dev"  -- which workspace do you want to be on after launch?
 
 {-
   Layout configuration. In this section we identify which xmonad
@@ -131,7 +128,7 @@ defaultLayouts = smartBorders(avoidStruts(
   -- the available space. Remaining windows tile to both the left and
   -- right of the master window. You can resize using "super-h" and
   -- "super-l".
-  -- ||| ThreeColMid 1 (3/100) (3/4)
+  ||| ThreeColMid 1 (3/100) (3/4)
 
   -- Circle layout places the master window in the center of the screen.
   -- Remaining windows appear in a circle around it
@@ -145,24 +142,9 @@ defaultLayouts = smartBorders(avoidStruts(
 
 -- Here we define some layouts which will be assigned to specific
 -- workspaces based on the functionality of that workspace.
-
--- We are just running Slack on the chat layout. Full screen it.
-chatLayout = avoidStruts(noBorders Full)
-
--- The GIMP layout uses the ThreeColMid layout. The traditional GIMP
--- floating panels approach is a bit of a challenge to handle with xmonad;
--- I find the best solution is to make the image you are working on the
--- master area, and then use this ThreeColMid layout to make the panels
--- tile to the left and right of the image. If you use GIMP 2.8, you
--- can use single-window mode and avoid this issue.
-gimpLayout = smartBorders(avoidStruts(ThreeColMid 1 (3/100) (3/4)))
-
 -- Here we combine our default layouts with our specific, workspace-locked
 -- layouts.
-myLayouts =
-  onWorkspace "7:Chat" chatLayout
-  $ onWorkspace "9:Pix" gimpLayout
-  $ defaultLayouts
+myLayouts = defaultLayouts
 
 
 {-
@@ -194,8 +176,8 @@ myKeyBindings =
     ((myModMask, xK_b), sendMessage ToggleStruts)
     , ((myModMask, xK_a), sendMessage MirrorShrink)
     , ((myModMask, xK_z), sendMessage MirrorExpand)
-    , ((myModMask, xK_p), spawn "synapse")
-    , ((myModMask .|. mod1Mask, xK_space), spawn "synapse")
+    , ((myModMask, xK_Escape), spawn "~/bin/layout-switch.sh")
+    , ((myModMask, xK_p), spawn "~/.config/i3/rofi-wrapper drun")
     , ((myModMask, xK_u), focusUrgent)
     , ((0, 0x1008FF12), spawn "amixer -q set Master toggle")
     , ((0, 0x1008FF11), spawn "amixer -q set Master 10%-")
@@ -248,11 +230,10 @@ myKeyBindings =
 
 myManagementHooks :: [ManageHook]
 myManagementHooks = [
-  resource =? "synapse" --> doIgnore
-  , resource =? "stalonetray" --> doIgnore
+  resource =? "stalonetray" --> doIgnore
   , className =? "rdesktop" --> doFloat
-  , className =? "Gnome-calculator" --> doFloat
-  , (className =? "Slack") --> doF (W.shift "7:Chat")
+  , (className =? "Slack") --> doF (W.shift "3:Chat")
+  , (className =? "Spotify") --> doF (W.shift "4:Music")
   , (className =? "Gimp-2.8") --> doF (W.shift "9:Pix")
   ]
 
@@ -272,20 +253,11 @@ myManagementHooks = [
 -- use the numpad or the top-row number keys. And, we also
 -- use them to figure out where to go when the user
 -- uses the arrow keys.
-numPadKeys =
-  [
-    xK_KP_Home, xK_KP_Up, xK_KP_Page_Up
-    , xK_KP_Left, xK_KP_Begin,xK_KP_Right
-    , xK_KP_End, xK_KP_Down, xK_KP_Page_Down
-    , xK_KP_Insert, xK_KP_Delete, xK_KP_Enter
-  ]
-
 numKeys =
   [
-    xK_7, xK_8, xK_9
+    xK_1, xK_2, xK_3
     , xK_4, xK_5, xK_6
-    , xK_1, xK_2, xK_3
-    , xK_0, xK_minus, xK_equal
+    , xK_7, xK_8, xK_9
   ]
 
 -- Here, some magic occurs that I once grokked but has since
@@ -294,11 +266,6 @@ numKeys =
 -- how to send windows to different workspaces,
 -- and what keys to use to change which monitor is focused.
 myKeys = myKeyBindings ++
-  [
-    ((m .|. myModMask, k), windows $ f i)
-       | (i, k) <- zip myWorkspaces numPadKeys
-       , (f, m) <- [(W.greedyView, 0), (W.shift, shiftMask)]
-  ] ++
   [
     ((m .|. myModMask, k), windows $ f i)
        | (i, k) <- zip myWorkspaces numKeys
@@ -320,7 +287,7 @@ myKeys = myKeyBindings ++
 -}
 
 main = do
-  xmproc <- spawnPipe "xmobar ~/.xmonad/xmobarrc"
+  xmproc <- spawnPipe "xmobar ~/.config/xmobar/xmobarrc"
   xmonad $ withUrgencyHook NoUrgencyHook $ def {
     focusedBorderColor = myFocusedBorderColor
   , normalBorderColor = myNormalBorderColor
